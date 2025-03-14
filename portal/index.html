@@ -194,7 +194,8 @@
                         displayUrl: 'xte.trrxitte.com',
                         linkUrl: 'https://xte.trrxitte.com',
                         tracking: 'Active',
-                        isMiningCore: false
+                        isMiningCore: false,
+                        defaultFee: '1' // Set default fee for XTE
                     },
                     { 
                         name: 'TRRXITTE XTCASH', 
@@ -203,7 +204,8 @@
                         displayUrl: 'xtcash.trrxitte.com',
                         linkUrl: 'https://xtcash.trrxitte.com',
                         tracking: 'Active',
-                        isMiningCore: false
+                        isMiningCore: false,
+                        defaultFee: '1' // Set default fee for XTCASH
                     },
                     { 
                         name: 'Bitcoin', 
@@ -325,10 +327,25 @@
                             // Fetch stats for non-MiningCore pools (TRRXITTE)
                             const poolResponse = await fetch(pool.poolUrl);
                             if (!poolResponse.ok) throw new Error(`TRRXITTE API failed for ${pool.name}: ${poolResponse.status}`);
-                            poolStats[pool.coingeckoId] = await poolResponse.json();
+                            const statsData = await poolResponse.json();
+                            poolStats[pool.coingeckoId] = {
+                                pool: {
+                                    hashrate: statsData.pool?.hashrate || 0,
+                                    miners: statsData.pool?.minerCount || 'N/A',
+                                    fee: pool.defaultFee, // Use default fee for XTE (0%) and XTCASH (1%)
+                                    lastBlock: statsData.pool?.lastBlock ? new Date(statsData.pool.lastBlock * 1000).toLocaleString() : 'N/A'
+                                },
+                                network: {
+                                    height: statsData.network?.height || 'N/A',
+                                    difficulty: statsData.network?.difficulty || 'N/A'
+                                }
+                            };
                         } catch (trrxitteError) {
                             console.error(`TRRXITTE fetch failed for ${pool.name}:`, trrxitteError);
-                            poolStats[pool.coingeckoId] = { pool: {}, network: {} };
+                            poolStats[pool.coingeckoId] = {
+                                pool: { hashrate: 0, miners: 'N/A', fee: pool.defaultFee, lastBlock: 'N/A' },
+                                network: { height: 'N/A', difficulty: 'N/A' }
+                            };
                         }
                     }
                 }
@@ -345,7 +362,10 @@
 
                         const hashrate = poolStatsData.hashrate || 0;
                         const miners = poolStatsData.miners || poolStatsData.minerCount || 'N/A';
-                        const fee = poolStatsData.fee || 'N/A';
+                        let fee = poolStatsData.fee;
+                        if (fee === 'N/A' && !pool.isMiningCore) {
+                            fee = pool.defaultFee; // Use default fee if not provided by API
+                        }
                         const height = networkStats.height || 'N/A';
                         const lastBlock = poolStatsData.lastBlock || 'N/A';
                         const difficulty = networkStats.difficulty || 'N/A';
@@ -364,14 +384,18 @@
                         }
 
                         let formattedDifficulty = '';
-                        if (difficulty > 1000000000) {
-                            formattedDifficulty = (difficulty / 1000000000).toFixed(2) + ' G';
-                        } else if (difficulty > 1000000) {
-                            formattedDifficulty = (difficulty / 1000000).toFixed(2) + ' M';
-                        } else if (difficulty > 1000) {
-                            formattedDifficulty = (difficulty / 1000).toFixed(2) + ' K';
+                        if (typeof difficulty === 'number') {
+                            if (difficulty > 1000000000) {
+                                formattedDifficulty = (difficulty / 1000000000).toFixed(2) + ' G';
+                            } else if (difficulty > 1000000) {
+                                formattedDifficulty = (difficulty / 1000000).toFixed(2) + ' M';
+                            } else if (difficulty > 1000) {
+                                formattedDifficulty = (difficulty / 1000).toFixed(2) + ' K';
+                            } else {
+                                formattedDifficulty = difficulty.toFixed(2);
+                            }
                         } else {
-                            formattedDifficulty = difficulty.toFixed(2);
+                            formattedDifficulty = difficulty;
                         }
 
                         const row = document.createElement('tr');
@@ -407,7 +431,7 @@
                             <td><a href="${pool.linkUrl}">${pool.displayUrl}</a></td>
                             <td class="error">N/A</td>
                             <td class="error">N/A</td>
-                            <td>${pool.isMiningCore ? '1.5' : 'Varies'}%</td>
+                            <td>${pool.isMiningCore ? '1.5' : pool.name === 'TRRXITTE XTE' ? '0' : '1'}%</td>
                             <td class="error">N/A</td>
                             <td class="error">N/A</td>
                             <td class="error">N/A</td>
