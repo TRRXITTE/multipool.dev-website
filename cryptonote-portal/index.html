@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Table V01</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!--===============================================================================================-->    
+    <link rel="icon" type="image/png" href="images/icons/favicon.ico"/>
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="vendor/bootstrap/css/bootstrap.min.css">
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="fonts/font-awesome-4.7.0/css/font-awesome.min.css">
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="vendor/animate/animate.css">
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="vendor/select2/select2.min.css">
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="vendor/perfect-scrollbar/perfect-scrollbar.css">
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="css/util.css">
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+    <!--===============================================================================================-->
+    <style>
+        .crypto-icon { width: 24px; height: 24px; margin-right: 5px; vertical-align: middle; }
+        .price { color: #28a745; }
+    </style>
+</head>
+<body>
+    <script src="https://widgets.coingecko.com/coingecko-coin-price-marquee-widget.js"></script>
+    <coingecko-coin-price-marquee-widget coin-ids="tether,bitcoin,ethereum,trrxitte,traaitt,traaittxtcash,nyantereum,nyandoge-international" currency="usd" background-color="#000000" locale="en" font-color="#ffffff"></coingecko-coin-price-marquee-widget>
+    
+    <div class="limiter">
+        <div class="container-table100">
+            <div class="wrap-table100">
+                <div class="table100">
+                    <table>
+                        <thead>
+                            <tr class="table100-head">
+                                <th class="column1">Cryptocurrency</th>
+                                <th class="column2">Price (USD)</th>
+                                <th class="column3">Mining Pool Url</th>
+                                <th class="column4">Hashrate</th>
+                                <th class="column5">Miners</th>
+                                <th class="column6">Fee</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cryptoTable">
+                            <!-- Data will be populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--===============================================================================================-->    
+    <script src="vendor/jquery/jquery-3.2.1.min.js"></script>
+    <!--===============================================================================================-->
+    <script src="vendor/bootstrap/js/popper.js"></script>
+    <script src="vendor/bootstrap/js/bootstrap.min.js"></script>
+    <!--===============================================================================================-->
+    <script src="vendor/select2/select2.min.js"></script>
+    <!--===============================================================================================-->
+    <script src="js/main.js"></script>
+
+    <script>
+        async function fetchCryptoData() {
+            try {
+                // Define pool configurations
+                const pools = [
+                    { 
+                        name: 'traaitt', 
+                        api: 'https://xte.trrxitte.com/api/stats', 
+                        url: 'xte.trrxitte.com', 
+                        coingeckoId: 'traaitt' 
+                    },
+                    { 
+                        name: 'traaittXTCASH', 
+                        api: 'https://xtcash.trrxitte.com/api/stats', 
+                        url: 'xcash.trrxitte.com', 
+                        coingeckoId: 'traaittxtcash' 
+                    }
+                ];
+
+                // Fetch CoinGecko data
+                const coingeckoIds = pools.map(pool => pool.coingeckoId).join(',');
+                const coingeckoResponse = await fetch(
+                    `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coingeckoIds}`
+                );
+                const coingeckoData = await coingeckoResponse.json();
+                const priceData = {};
+                coingeckoData.forEach(coin => {
+                    priceData[coin.id] = {
+                        price: coin.current_price,
+                        icon: coin.image
+                    };
+                });
+
+                // Fetch pool stats and build table
+                const tableBody = document.getElementById('cryptoTable');
+                tableBody.innerHTML = '';
+
+                for (const pool of pools) {
+                    try {
+                        const response = await fetch(pool.api);
+                        const stats = await response.json();
+                        
+                        // Convert hashrate to readable format
+                        const hashrate = stats.pool?.hashrate || 0;
+                        let formattedHashrate = '';
+                        if (hashrate > 1000000) {
+                            formattedHashrate = (hashrate / 1000000).toFixed(2) + ' MH/s';
+                        } else if (hashrate > 1000) {
+                            formattedHashrate = (hashrate / 1000).toFixed(2) + ' KH/s';
+                        } else {
+                            formattedHashrate = hashrate.toFixed(2) + ' H/s';
+                        }
+
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="column1">
+                                <img src="${priceData[pool.coingeckoId]?.icon || ''}" 
+                                     class="crypto-icon" 
+                                     alt="${pool.name} icon">
+                                ${pool.name}
+                            </td>
+                            <td class="column2 price">
+                                $${priceData[pool.coingeckoId]?.price?.toFixed(4) || 'N/A'}
+                            </td>
+                            <td class="column3">
+                                <a href="http://${pool.url}">${pool.url}</a>
+                            </td>
+                            <td class="column4">${formattedHashrate}</td>
+                            <td class="column5">${stats.pool?.miners || 0}</td>
+                            <td class="column6">1%</td>
+                        `;
+                        tableBody.appendChild(row);
+                    } catch (poolError) {
+                        console.error(`Error fetching data for ${pool.name}:`, poolError);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // Initial fetch and refresh every 30 seconds
+        fetchCryptoData();
+        setInterval(fetchCryptoData, 30000);
+    </script>
+</body>
+</html>

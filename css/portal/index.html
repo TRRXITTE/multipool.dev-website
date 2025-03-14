@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Crypto Mining Pools & Performance</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!--===============================================================================================-->    
+    <link rel="icon" type="image/png" href="images/icons/favicon.ico"/>
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="vendor/bootstrap/css/bootstrap.min.css">
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="fonts/font-awesome-4.7.0/css/font-awesome.min.css">
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="vendor/animate/animate.css">
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="vendor/select2/select2.min.css">
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="vendor/perfect-scrollbar/perfect-scrollbar.css">
+    <!--===============================================================================================-->
+    <link rel="stylesheet" type="text/css" href="css/util.css">
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+    <!--===============================================================================================-->
+    <style>
+        body {
+            background: url('images/landscape.png') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 300vh; /* Increased for significant scrollable space */
+            color: #ffffff;
+            margin: 0; /* Remove default margin */
+            padding: 0; /* Remove default padding */
+        }
+        .crypto-icon { width: 24px; height: 24px; margin-right: 5px; vertical-align: middle; }
+        .price { color: #28a745; }
+        .error { color: #dc3545; }
+        .widget-container { margin: 20px 0; } /* Consistent padding reference */
+        h3 { color: #ffffff; text-align: center; margin-bottom: 15px; }
+        .table100-head th { 
+            background-color: #333; 
+            color: #ffffff; 
+            padding: 10px; 
+        }
+        .container { 
+            padding-top: 20px;
+            min-height: 250vh; /* Increased container height */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; /* Distribute content vertically */
+        }
+        gecko-coin-list-widget { 
+            width: 100%; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            display: block; 
+        }
+        table {
+            width: 100%;
+            max-width: 1200px; /* Limit table width */
+            margin: 20px auto; /* Match widget-container padding and center */
+         
+            position: sticky; /* Stick table to top when scrolling */
+            top: 0; /* Align to top of viewport */
+            z-index: 10; /* Ensure table stays above other content */
+        }
+        td, th {
+            padding: 10px; /* Consistent padding */
+            text-align: left; /* Align text */
+        }
+        .spacer {
+            height: 150vh; /* Extra space at bottom for scrolling */
+        }
+    </style>
+</head>
+<body>
+    <!-- Main CoinGecko Marquee Widget -->
+    <script src="https://widgets.coingecko.com/gecko-coin-price-marquee-widget.js"></script>
+    <gecko-coin-price-marquee-widget locale="en" dark-mode="true" outlined="true" coin-ids="tether,bitcoin,ethereum,trrxitte,traaitt,traaittxtcash,nyantereum,nyandoge-international" initial-currency="usd"></gecko-coin-price-marquee-widget>
+
+    <br><br><br>
+    <!-- SHA-256 and CryptoNote Widgets Below Tables -->
+    <div class="row widget-container">
+        <div class="col-md-6">
+            <h3>General Market Performance</h3>
+            <gecko-coin-list-widget 
+                locale="en" 
+                dark-mode="true" 
+                outlined="true" 
+                coin-ids="ethereum,bitcoin,bitcoin-cash,solana,binancecoin" 
+                initial-currency="usd">
+            </gecko-coin-list-widget>
+        </div>
+        <div class="col-md-6">
+            <h3>TRRXITTE Int. Performance</h3>
+            <gecko-coin-list-widget 
+                locale="en" 
+                dark-mode="true" 
+                outlined="true" 
+                coin-ids="trrxitte,nyantereum,traaitt,traaittxtcash,nyandoge-international" 
+                initial-currency="usd">
+            </gecko-coin-list-widget>
+        </div>
+    </div>
+
+    <!-- SHA-256 and CryptoNote Widgets Below Tables -->
+    <div class="row widget-container">
+        <div class="col-md-6">
+            <h3>SHA-256 Coins Performance</h3>
+            <gecko-coin-list-widget 
+                locale="en" 
+                dark-mode="true" 
+                outlined="true" 
+                coin-ids="bitcoin,bitcoin-cash" 
+                initial-currency="usd">
+            </gecko-coin-list-widget>
+        </div>
+        <div class="col-md-6">
+            <h3>CryptoNote Coins Performance</h3>
+            <gecko-coin-list-widget 
+                locale="en" 
+                dark-mode="true" 
+                outlined="true" 
+                coin-ids="monero,arqma" 
+                initial-currency="usd">
+            </gecko-coin-list-widget>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- General Market Widget Above First Row -->
+        <div class="widget-container">
+            <h3></h3>
+            <script src="https://widgets.coingecko.com/gecko-coin-list-widget.js"></script>
+        </div>
+
+        <table>
+            <thead>
+                <tr class="table100-head">
+                    <th class="column1">Cryptocurrency</th>
+                    <th class="column2">Price (USD)</th>
+                    <th class="column3">Mining Pool Url</th>
+                    <th class="column4">Hashrate</th>
+                    <th class="column5">Miners</th>
+                    <th class="column6">Fee</th>
+                    <th class="column7">Height</th>
+                    <th class="column8">Last Block</th>
+                    <th class="column9">Difficulty</th>
+                    <th class="column10">Tracking</th> <!-- New column for tracking -->
+                </tr>
+            </thead>
+            <tbody id="cryptoTable">
+                <!-- Data will be populated dynamically -->
+            </tbody>
+        </table>
+
+        <!-- Spacer for additional scroll space -->
+        <div class="spacer"></div>
+    </div>
+
+    <!--===============================================================================================-->    
+    <script src="vendor/jquery/jquery-3.2.1.min.js"></script>
+    <!--===============================================================================================-->
+    <script src="vendor/bootstrap/js/popper.js"></script>
+    <script src="vendor/bootstrap/js/bootstrap.min.js"></script>
+    <!--===============================================================================================-->
+    <script src="vendor/select2/select2.min.js"></script>
+    <!--===============================================================================================-->
+    <script src="js/main.js"></script>
+
+    <script>
+        async function fetchCryptoData() {
+            try {
+                const pools = [
+                    { 
+                        name: 'TRRXITTE (XTE)', 
+                        coingeckoId: 'traaitt',
+                        poolUrl: 'https://xte.trrxitte.com/api/stats',
+                        tracking: 'Active' // Example tracking status
+                    },
+                    { 
+                        name: 'TRRXITTE XTCASH', 
+                        coingeckoId: 'traaittxtcash',
+                        poolUrl: 'https://xtcash.trrxitte.com/api/stats',
+                        tracking: 'Active' // Example tracking status
+                    }
+                ];
+
+                // Fetch CoinGecko data for prices
+                const coingeckoIds = pools.map(pool => pool.coingeckoId).join(',');
+                const coingeckoResponse = await fetch(
+                    `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coingeckoIds}&order=market_cap_desc&per_page=100&page=1&sparkline=false`
+                );
+                const coingeckoData = await coingeckoResponse.json();
+                const priceData = {};
+                coingeckoData.forEach(coin => {
+                    priceData[coin.id] = {
+                        price: coin.current_price,
+                        icon: coin.image
+                    };
+                });
+
+                // Fetch MiningPoolStats data
+                const miningPoolResponse = await fetch('https://data.miningpoolstats.stream/data/coins_data.js');
+                const miningPoolText = await miningPoolResponse.text();
+                const miningPoolJson = miningPoolText.match(/coins_data = (\[.*?\]);/s)[1];
+                const miningPoolData = JSON.parse(miningPoolJson);
+
+                // Build table
+                const tableBody = document.getElementById('cryptoTable');
+                tableBody.innerHTML = '';
+
+                for (const pool of pools) {
+                    try {
+                        // Find pool data in MiningPoolStats response
+                        const poolData = miningPoolData.find(p => 
+                            p.name.toLowerCase().includes(pool.name.toLowerCase()) || 
+                            p.id === pool.coingeckoId
+                        );
+
+                        // Convert hashrate to readable format
+                        const hashrate = poolData?.hashrate || 0;
+                        let formattedHashrate = '';
+                        if (hashrate > 1000000000) {
+                            formattedHashrate = (hashrate / 1000000000).toFixed(2) + ' GH/s';
+                        } else if (hashrate > 1000000) {
+                            formattedHashrate = (hashrate / 1000000).toFixed(2) + ' MH/s';
+                        } else if (hashrate > 1000) {
+                            formattedHashrate = (hashrate / 1000).toFixed(2) + ' KH/s';
+                        } else {
+                            formattedHashrate = hashrate.toFixed(2) + ' H/s';
+                        }
+
+                        // Convert difficulty to readable format
+                        const difficulty = poolData?.difficulty || 0;
+                        let formattedDifficulty = '';
+                        if (difficulty > 1000000000) {
+                            formattedDifficulty = (difficulty / 1000000000).toFixed(2) + ' G';
+                        } else if (difficulty > 1000000) {
+                            formattedDifficulty = (difficulty / 1000000).toFixed(2) + ' M';
+                        } else if (difficulty > 1000) {
+                            formattedDifficulty = (difficulty / 1000).toFixed(2) + ' K';
+                        } else {
+                            formattedDifficulty = difficulty.toFixed(2);
+                        }
+
+                        // Format last block time
+                        const lastBlockTime = poolData?.lastblock?.timeago || 'N/A';
+                        const height = poolData?.height || 'N/A';
+
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>
+                                <img src="${priceData[pool.coingeckoId]?.icon || ''}" 
+                                     class="crypto-icon" 
+                                     alt="${pool.name} icon">
+                                ${pool.name}
+                            </td>
+                            <td class="price">$${priceData[pool.coingeckoId]?.price?.toFixed(4) || 'N/A'}</td>
+                            <td><a href="${pool.poolUrl}">${pool.poolUrl.replace('https://', '')}</a></td>
+                            <td>${formattedHashrate}</td>
+                            <td>${poolData?.miners || 'N/A'}</td>
+                            <td>${poolData?.fee || 'Varies'}</td>
+                            <td>${height}</td>
+                            <td>${lastBlockTime}</td>
+                            <td>${formattedDifficulty}</td>
+                            <td>${pool.tracking}</td> <!-- New tracking column -->
+                        `;
+                        tableBody.appendChild(row);
+                    } catch (poolError) {
+                        console.error(`Error processing data for ${pool.name}:`, poolError);
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>
+                                <img src="${priceData[pool.coingeckoId]?.icon || ''}" 
+                                     class="crypto-icon" 
+                                     alt="${pool.name} icon">
+                                ${pool.name}
+                            </td>
+                            <td class="price">$${priceData[pool.coingeckoId]?.price?.toFixed(4) || 'N/A'}</td>
+                            <td><a href="${pool.poolUrl}">${pool.poolUrl.replace('https://', '')}</a></td>
+                            <td class="error">N/A</td>
+                            <td class="error">N/A</td>
+                            <td>Varies</td>
+                            <td class="error">N/A</td>
+                            <td class="error">N/A</td>
+                            <td class="error">N/A</td>
+                            <td>${pool.tracking}</td> <!-- Tracking persists on error -->
+                        `;
+                        tableBody.appendChild(row);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                const tableBody = document.getElementById('cryptoTable'); // Fixed typo from getId to getElementById
+                tableBody.innerHTML = ''; // Clears table on error
+            }
+        }
+
+        // Initial fetch and refresh every 30 seconds
+        fetchCryptoData();
+        setInterval(fetchCryptoData, 30000);
+    </script>
+</body>
+</html>
