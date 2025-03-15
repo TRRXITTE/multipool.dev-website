@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/ico" href="https://bitcoin.multipool.dev/favicon.ico">
+  
+  <link rel="apple-touch-icon" href="https://bitcoin.multipool.dev/favicon.ico">  
+  <link rel="apple-touch-icon" sizes="76x76" href="https://bitcoin.multipool.dev/favicon.ico">
+  
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-7VDJYEP1R1"></script>
     <script>
@@ -126,7 +131,7 @@
                     locale="en" 
                     dark-mode="true" 
                     outlined="true" 
-                    coin-ids="bitcoin,bitcoin-cash" 
+                    coin-ids="bitcoin,bitcoin-cash,ecash,bitcoin-cash-sv" 
                     initial-currency="usd">
                 </gecko-coin-list-widget>
             </div>
@@ -136,12 +141,12 @@
                     locale="en" 
                     dark-mode="true" 
                     outlined="true" 
-                    coin-ids="monero,arqma" 
+                    coin-ids="monero,dash,zcash,arqma" 
                     initial-currency="usd">
                 </gecko-coin-list-widget>
             </div>
         </div>
-        <br><br><br><!-- Mining Stats Table moved below the market widgets -->
+        <br><br><br><br><!-- Mining Stats Table moved below the market widgets -->
 
         <!-- Image placeholder beneath the table -->
         <div style="width: 100%; text-align: center;">
@@ -254,7 +259,31 @@
                         linkUrl: 'https://bitcoin.multipool.dev/#dash/connect',
                         tracking: 'Active',
                         isMiningCore: true
-                    }
+                    },
+                        { 
+        name: 'eCash', 
+        coingeckoId: 'ecash',
+        poolId: 'ecash',
+        poolUrl: 'https://bitcoin.multipool.dev/api/pools/ecash/stats',
+        blockUrl: 'https://bitcoin.multipool.dev/api/pools/ecash/blocks',
+        configUrl: 'https://bitcoin.multipool.dev/api/pools/',
+        displayUrl: 'eCash at multipool',
+        linkUrl: 'https://bitcoin.multipool.dev/#ecash/connect',
+        tracking: 'Active',
+        isMiningCore: true
+    },
+    { 
+        name: 'Bitcoin SV', 
+        coingeckoId: 'bitcoin-cash-sv',
+        poolId: 'bitcoinsv',
+        poolUrl: 'https://bitcoin.multipool.dev/api/pools/bitcoinsv/stats',
+        blockUrl: 'https://bitcoin.multipool.dev/api/pools/bitcoinsv/blocks',
+        configUrl: 'https://bitcoin.multipool.dev/api/pools/',
+        displayUrl: 'Bitcoin SV at multipool',
+        linkUrl: 'https://bitcoin.multipool.dev/#bitcoinsv/connect',
+        tracking: 'Active',
+        isMiningCore: true
+    }
                 ];
 
                 // Fetch CoinGecko data for prices
