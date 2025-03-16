@@ -79,6 +79,19 @@
     .spacer {
       height: 150vh;
     }
+    .fetch-info {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      z-index: 1000;
+    }
+    .fetch-info.success { color: #28a745; }
+    .fetch-info.error { color: #dc3545; }
+    .fetch-info.loading { color: #ffffff; }
   </style>
 </head>
 <body>
@@ -177,6 +190,9 @@
     <div class="spacer"></div>
   </div>
 
+  <!-- Fetch Info Display -->
+  <div id="fetchInfo" class="fetch-info loading">Loading price data...</div>
+
   <!--===============================================================================================-->    
   <script src="vendor/jquery/jquery-3.2.1.min.js"></script>
   <!--===============================================================================================-->
@@ -188,7 +204,31 @@
   <script src="js/main.js"></script>
 
   <script>
+    // Utility function to update fetch info display
+    function updateFetchInfo(message, status) {
+      const fetchInfo = document.getElementById('fetchInfo');
+      fetchInfo.textContent = message;
+      fetchInfo.className = `fetch-info ${status}`;
+    }
+
+    // Cache handling functions
+    function getCachedPrices() {
+      const cached = localStorage.getItem('cryptoPrices');
+      return cached ? JSON.parse(cached) : null;
+    }
+
+    function setCachedPrices(prices) {
+      localStorage.setItem('cryptoPrices', JSON.stringify({
+        data: prices,
+        timestamp: Date.now()
+      }));
+    }
+
     async function fetchCryptoData() {
+      updateFetchInfo('Fetching price and pool data...', 'loading');
+      const tableBody = document.getElementById('cryptoTable');
+      tableBody.innerHTML = '<tr><td colspan="10">Loading cryptocurrency data...</td></tr>';
+
       try {
         const pools = [
           { 
@@ -319,27 +359,62 @@
           'zcash': 'https://multipool.dev/portal/images/zcash.png'
         };
 
-        // Fetch CoinGecko data for prices
+        // Fetch CoinGecko data for prices with enhanced retry logic
         const coingeckoIds = [...new Set([...pools.map(pool => pool.coingeckoId), ...pools.filter(p => p.mergedWith).map(p => p.mergedWith)])].join(',');
-        let coingeckoData = [];
-        try {
-          const coingeckoResponse = await fetch(
-            `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coingeckoIds}&order=market_cap_desc&per_page=100&page=1&sparkline=false`
-          );
-          if (!coingeckoResponse.ok) {
-            throw new Error(`CoinGecko API failed: ${coingeckoResponse.status} - ${coingeckoResponse.statusText}`);
+        let priceData = {};
+
+        async function fetchPricesWithRetry(attempts = 5, delay = 2000) {
+          for (let i = 0; i < attempts; i++) {
+            try {
+              const response = await fetch(
+                `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coingeckoIds}&order=market_cap_desc&per_page=100&page=1&sparkline=false`,
+                { headers: { 'Accept': 'application/json' } }
+              );
+              if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`CoinGecko API failed: ${response.status} - ${response.statusText} - ${errorText}`);
+              }
+              const coingeckoData = await response.json();
+              if (!Array.isArray(coingeckoData) || coingeckoData.length === 0) {
+                throw new Error('Empty or invalid response from CoinGecko');
+              }
+              coingeckoData.forEach(coin => {
+                priceData[coin.id] = {
+                  price: coin.current_price ?? 'N/A',
+                  icon: coin.image || multipoolLogos[coin.id] || ''
+                };
+              });
+              setCachedPrices(priceData);
+              updateFetchInfo(`Prices fetched successfully at ${new Date().toLocaleTimeString()}`, 'success');
+              return true;
+            } catch (error) {
+              console.warn(`Price fetch attempt ${i + 1}/${attempts} failed: ${error.message}`);
+              if (i < attempts - 1) {
+                updateFetchInfo(`Retrying price fetch (${i + 1}/${attempts})...`, 'loading');
+                await new Promise(resolve => setTimeout(resolve, delay));
+              } else {
+                console.error('All price fetch attempts failed:', error);
+                const cached = getCachedPrices();
+                if (cached && (Date.now() - cached.timestamp) < 3600000) { // Use cache if < 1 hour old
+                  priceData = cached.data;
+                  updateFetchInfo(`Using cached prices from ${new Date(cached.timestamp).toLocaleTimeString()}`, 'success');
+                  return true;
+                } else {
+                  updateFetchInfo('Failed to fetch prices after retries. No valid cache available.', 'error');
+                  return false;
+                }
+              }
+            }
           }
-          coingeckoData = await coingeckoResponse.json();
-        } catch (coingeckoError) {
-          console.error('CoinGecko fetch failed:', coingeckoError.message);
         }
-        const priceData = {};
-        coingeckoData.forEach(coin => {
-          priceData[coin.id] = {
-            price: coin.current_price,
-            icon: coin.image
-          };
-        });
+
+        const pricesLoaded = await fetchPricesWithRetry();
+        if (!pricesLoaded) {
+          pools.forEach(pool => {
+            priceData[pool.coingeckoId] = { price: 'N/A', icon: multipoolLogos[pool.logoId] || '' };
+            if (pool.mergedWith) priceData[pool.mergedWith] = { price: 'N/A', icon: multipoolLogos[pool.mergedWith] || '' };
+          });
+        }
 
         // Fetch pool stats and configuration
         const poolStats = {};
@@ -437,9 +512,7 @@
         }
 
         // Build table
-        const tableBody = document.getElementById('cryptoTable');
         tableBody.innerHTML = '';
-
         for (const pool of pools) {
           try {
             const stats = poolStats[pool.coingeckoId];
@@ -484,33 +557,18 @@
               formattedDifficulty = difficulty;
             }
 
-            // Improved price display
-            let priceDisplay;
-            if (priceData[pool.coingeckoId]?.price !== undefined) {
-              const price = priceData[pool.coingeckoId].price;
-              if (price >= 0.0001) {
-                priceDisplay = `$${price.toFixed(4)}`;
-              } else if (price > 0) {
-                priceDisplay = `$${price.toFixed(8)}`; // Show 8 decimals for tiny values
-              } else {
-                priceDisplay = '$0.00000000';
-              }
-            } else {
-              priceDisplay = '$N/A';
-            }
+            // Enhanced price display
+            const formatPrice = (price) => {
+              if (price === 'N/A' || price === undefined) return '$N/A';
+              if (price >= 1) return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              if (price >= 0.0001) return `$${price.toFixed(4)}`;
+              if (price > 0) return `$${price.toFixed(8)}`;
+              return '$0.00000000';
+            };
+
+            let priceDisplay = formatPrice(priceData[pool.coingeckoId]?.price);
             if (pool.mergedWith) {
-              if (priceData[pool.mergedWith]?.price !== undefined) {
-                const mergedPrice = priceData[pool.mergedWith].price;
-                if (mergedPrice >= 0.0001) {
-                  priceDisplay += ` / $${mergedPrice.toFixed(4)}`;
-                } else if (mergedPrice > 0) {
-                  priceDisplay += ` / $${mergedPrice.toFixed(8)}`;
-                } else {
-                  priceDisplay += ' / $0.00000000';
-                }
-              } else {
-                priceDisplay += ' / $N/A';
-              }
+              priceDisplay += ` / ${formatPrice(priceData[pool.mergedWith]?.price)}`;
             }
 
             const logoUrl = multipoolLogos[pool.logoId] || priceData[pool.coingeckoId]?.icon || '';
@@ -520,7 +578,8 @@
               <td>
                 <img src="${logoUrl}" 
                      class="crypto-icon" 
-                     alt="${pool.name} icon">
+                     alt="${pool.name} icon" 
+                     onerror="this.src='https://multipool.dev/portal/images/default.png'">
                 ${pool.name}
               </td>
               <td class="price">${priceDisplay}</td>
@@ -537,39 +596,17 @@
           } catch (poolError) {
             console.error(`Error processing data for ${pool.name}:`, poolError);
             const row = document.createElement('tr');
-            let priceDisplay;
-            if (priceData[pool.coingeckoId]?.price !== undefined) {
-              const price = priceData[pool.coingeckoId].price;
-              if (price >= 0.0001) {
-                priceDisplay = `$${price.toFixed(4)}`;
-              } else if (price > 0) {
-                priceDisplay = `$${price.toFixed(8)}`;
-              } else {
-                priceDisplay = '$0.00000000';
-              }
-            } else {
-              priceDisplay = '$N/A';
-            }
+            let priceDisplay = formatPrice(priceData[pool.coingeckoId]?.price);
             if (pool.mergedWith) {
-              if (priceData[pool.mergedWith]?.price !== undefined) {
-                const mergedPrice = priceData[pool.mergedWith].price;
-                if (mergedPrice >= 0.0001) {
-                  priceDisplay += ` / $${mergedPrice.toFixed(4)}`;
-                } else if (mergedPrice > 0) {
-                  priceDisplay += ` / $${mergedPrice.toFixed(8)}`;
-                } else {
-                  priceDisplay += ' / $0.00000000';
-                }
-              } else {
-                priceDisplay += ' / $N/A';
-              }
+              priceDisplay += ` / ${formatPrice(priceData[pool.mergedWith]?.price)}`;
             }
             const logoUrl = multipoolLogos[pool.logoId] || priceData[pool.coingeckoId]?.icon || '';
             row.innerHTML = `
               <td>
                 <img src="${logoUrl}" 
                      class="crypto-icon" 
-                     alt="${pool.name} icon">
+                     alt="${pool.name} icon" 
+                     onerror="this.src='https://multipool.dev/portal/images/default.png'">
                 ${pool.name}
               </td>
               <td class="price">${priceDisplay}</td>
@@ -587,14 +624,14 @@
         }
       } catch (error) {
         console.error('Error in fetchCryptoData:', error);
-        const tableBody = document.getElementById('cryptoTable');
+        updateFetchInfo('Failed to load data. Please try refreshing.', 'error');
         tableBody.innerHTML = '<tr><td colspan="10" class="error">Failed to load data</td></tr>';
       }
     }
 
-    // Initial fetch and refresh every 30 seconds
+    // Initial fetch and refresh every 60 seconds (adjusted to avoid rate limits)
     fetchCryptoData();
-    setInterval(fetchCryptoData, 30000);
+    setInterval(fetchCryptoData, 60000);
   </script>
 </body>
 </html>
