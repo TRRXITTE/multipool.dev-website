@@ -264,7 +264,10 @@
               return priceData;
             } else {
               updateFetchInfo('Failed to fetch prices after retries. No valid cache available.', 'error');
-              return null;
+              // Fallback to default prices for traaitt and traaittxtcash if not in cache
+              priceData['traaitt'] = priceData['traaitt'] || { price: 0.00000001, icon: '' }; // Default price for XTE
+              priceData['traaittxtcash'] = priceData['traaittxtcash'] || { price: 0.00000001, icon: '' }; // Default price for XTCASH
+              return priceData;
             }
           }
         }
@@ -522,12 +525,19 @@
               const poolResponse = await fetch(pool.poolUrl);
               if (!poolResponse.ok) throw new Error(`TRRXITTE API failed for ${pool.name}: ${poolResponse.status}`);
               const statsData = await poolResponse.json();
+              console.log(`API Response for ${pool.name}:`, statsData); // Log for debugging
               poolStats[pool.coingeckoId] = {
                 pool: {
-                  hashrate: statsData.pool?.hashrate || 0,
-                  miners: statsData.pool?.minerCount || 'N/A',
+                  hashrate: statsData.pool?.hashrate || 0, // Proportional (pool) hashrate
+                  soloHashrate: statsData.pool?.hashrateSolo || 0, // Solo hashrate
+                  miners: statsData.pool?.miners !== undefined ? statsData.pool.miners : 'N/A', // Ensure 'N/A' is set correctly
+                  minersSolo: statsData.pool?.minersSolo !== undefined ? statsData.pool.minersSolo : 'N/A', // Ensure 'N/A' is set correctly
                   fee: pool.defaultFee,
-                  lastBlock: statsData.pool?.lastBlock ? new Date(statsData.pool.lastBlock * 1000).toLocaleString() : 'N/A'
+                  lastBlock: statsData.pool?.lastBlockFoundSolo 
+                    ? new Date(parseInt(statsData.pool.lastBlockFoundSolo)).toLocaleString() 
+                    : statsData.pool?.lastBlockFoundprop 
+                      ? new Date(parseInt(statsData.pool.lastBlockFoundprop)).toLocaleString() 
+                      : 'N/A'
                 },
                 network: {
                   height: statsData.network?.height || 'N/A',
@@ -537,7 +547,7 @@
             } catch (trrxitteError) {
               console.error(`TRRXITTE fetch failed for ${pool.name}:`, trrxitteError);
               poolStats[pool.coingeckoId] = {
-                pool: { hashrate: 0, miners: 'N/A', fee: pool.defaultFee, lastBlock: 'N/A' },
+                pool: { hashrate: 0, soloHashrate: 0, miners: 'N/A', minersSolo: 'N/A', fee: pool.defaultFee, lastBlock: 'N/A' },
                 network: { height: 'N/A', difficulty: 'N/A' }
               };
             }
@@ -552,8 +562,10 @@
             const poolStatsData = stats.pool || {};
             const networkStats = stats.network || {};
 
-            const hashrate = poolStatsData.hashrate || 0;
-            const miners = poolStatsData.miners || poolStatsData.minerCount || 'N/A';
+            const hashrate = poolStatsData.hashrate || 0; // Proportional (pool) hashrate
+            const soloHashrate = poolStatsData.soloHashrate || 0; // Solo hashrate
+            const miners = poolStatsData.miners === 'N/A' ? 'N/A' : (poolStatsData.miners || 0); // Ensure 'N/A' is preserved
+            const minersSolo = poolStatsData.minersSolo === 'N/A' ? 'N/A' : (poolStatsData.minersSolo || 0); // Ensure 'N/A' is preserved
             let fee = poolStatsData.fee;
             if (fee === 'N/A' && !pool.isMiningCore) {
               fee = pool.defaultFee;
@@ -562,18 +574,26 @@
             const lastBlock = poolStatsData.lastBlock || 'N/A';
             const difficulty = networkStats.difficulty || 'N/A';
 
+            // Combine hashrate (proportional + solo) and convert to appropriate unit
+            const totalHashrate = hashrate + soloHashrate;
             let formattedHashrate = '';
-            if (hashrate > 1000000000000) {
-              formattedHashrate = (hashrate / 1000000000000).toFixed(2) + ' TH/s';
-            } else if (hashrate > 1000000000) {
-              formattedHashrate = (hashrate / 1000000000).toFixed(2) + ' GH/s';
-            } else if (hashrate > 1000000) {
-              formattedHashrate = (hashrate / 1000000).toFixed(2) + ' MH/s';
-            } else if (hashrate > 1000) {
-              formattedHashrate = (hashrate / 1000).toFixed(2) + ' KH/s';
+            if (totalHashrate > 1000000000000) {
+              formattedHashrate = (totalHashrate / 1000000000000).toFixed(2) + ' TH/s';
+            } else if (totalHashrate > 1000000000) {
+              formattedHashrate = (totalHashrate / 1000000000).toFixed(2) + ' GH/s';
+            } else if (totalHashrate > 1000000) {
+              formattedHashrate = (totalHashrate / 1000000).toFixed(2) + ' MH/s';
+            } else if (totalHashrate > 1000) {
+              formattedHashrate = (totalHashrate / 1000).toFixed(2) + ' KH/s';
             } else {
-              formattedHashrate = hashrate.toFixed(2) + ' H/s';
+              formattedHashrate = totalHashrate.toFixed(2) + ' H/s';
             }
+
+            // Combine miners (pool + solo) and display only the total, ensuring 'N/A' is standalone
+            const totalMiners = (miners === 'N/A' || minersSolo === 'N/A') ? 'N/A' : (parseInt(miners) + parseInt(minersSolo));
+            const minersDisplay = (pool.coingeckoId === 'traaitt' || pool.coingeckoId === 'traaittxtcash') 
+              ? `${totalMiners} total` 
+              : (totalMiners === 'N/A' ? 'N/A' : totalMiners);
 
             let formattedDifficulty = '';
             if (typeof difficulty === 'number') {
@@ -622,7 +642,7 @@
               <td class="price">${priceDisplay}</td>
               <td><a href="${pool.linkUrl}">${pool.displayUrl}</a></td>
               <td>${formattedHashrate}</td>
-              <td>${miners}</td>
+              <td>${minersDisplay}</td>
               <td>${fee}%</td>
               <td>${height}</td>
               <td>${lastBlock}</td>
