@@ -462,7 +462,6 @@
                   hashrate: data.pool.poolStats?.poolHashrate || 0,
                   miners: data.pool.poolStats?.connectedMiners || 'N/A',
                   fee: data.pool.poolFeePercent || '1',
-                  // Assuming totalBlocks and last block time from networkStats as blocks data isn't separate
                   lastBlock: data.pool.networkStats?.lastNetworkBlockTime ? new Date(data.pool.networkStats.lastNetworkBlockTime).toLocaleString() : 'N/A'
                 },
                 network: {
@@ -569,10 +568,10 @@
               formattedHashrate = totalHashrate.toFixed(2) + ' H/s';
             }
 
-            const totalMiners = (miners === 'N/A' || minersSolo === 'N/A') ? 'N/A' : (parseInt(miners) + parseInt(minersSolo));
+            const totalMiners = (miners === 'N/A' || minersSolo === 'N/A') ? 'none' : (parseInt(miners) + parseInt(minersSolo));
             const minersDisplay = (pool.coingeckoId === 'traaitt' || pool.coingeckoId === 'traaittxtcash') 
-              ? `${totalMiners} total` 
-              : (totalMiners === 'N/A' ? 'N/A' : totalMiners);
+              ? `${totalMiners === 'none' ? 'none' : totalMiners + ' total'}` 
+              : totalMiners;
 
             let formattedDifficulty = '';
             if (typeof difficulty === 'number') {
@@ -651,7 +650,7 @@
               <td class="price">${priceDisplay}</td>
               <td><a href="${pool.linkUrl}">${pool.displayUrl}</a></td>
               <td class="error">N/A</td>
-              <td class="error">N/A</td>
+              <td>none</td>
               <td>${pool.isMiningCore ? '1' : pool.defaultFee}%</td>
               <td class="error">N/A</td>
               <td class="error">N/A</td>
