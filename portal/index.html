@@ -222,6 +222,15 @@
       }));
     }
 
+    // Price formatting function
+    function formatPrice(price) {
+      if (price === 'N/A' || price === undefined) return '$N/A';
+      if (price >= 1) return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      if (price >= 0.0001) return `$${price.toFixed(4)}`;
+      if (price > 0) return `$${price.toFixed(8)}`;
+      return '$0.00000000';
+    }
+
     // Price fetch function with retry logic
     async function fetchPricesWithRetry(coingeckoIds, attempts = 5, delay = 2000) {
       let priceData = {};
@@ -259,30 +268,21 @@
             if (cached && (Date.now() - cached.timestamp) < 3600000) { // Use cache if < 1 hour old
               priceData = cached.data;
               updateFetchInfo(`Using cached prices from ${new Date(cached.timestamp).toLocaleTimeString()}`, 'success');
-              return priceData;
             } else {
-              updateFetchInfo('Failed to fetch prices after retries. No valid cache available.', 'error');
+              updateFetchInfo('Failed to fetch prices after retries. Using defaults.', 'error');
               priceData['traaitt'] = priceData['traaitt'] || { price: 0.00000001, icon: '' };
               priceData['traaittxtcash'] = priceData['traaittxtcash'] || { price: 0.00000001, icon: '' };
-              return priceData;
             }
+            return priceData;
           }
         }
       }
     }
 
-    // Background price fetch without refreshing the table
+    // Background price update function
     async function updatePricesInBackground(coingeckoIds) {
       const priceData = await fetchPricesWithRetry(coingeckoIds);
       if (priceData) {
-        const formatPrice = (price) => {
-          if (price === 'N/A' || price === undefined) return '$N/A';
-          if (price >= 1) return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-          if (price >= 0.0001) return `$${price.toFixed(4)}`;
-          if (price > 0) return `$${price.toFixed(8)}`;
-          return '$0.00000000';
-        };
-
         const rows = document.querySelectorAll('#cryptoTable tr');
         rows.forEach(row => {
           const coingeckoId = row.getAttribute('data-coingecko-id');
@@ -301,377 +301,186 @@
       }
     }
 
-    // Main function to build the table initially
-    async function fetchCryptoData() {
-      updateFetchInfo('Fetching price and pool data...', 'loading');
+    // Initialize table with default or cached data
+    async function initializeTable() {
+      updateFetchInfo('Initializing table...', 'loading');
       const tableBody = document.getElementById('cryptoTable');
       tableBody.innerHTML = '<tr><td colspan="10">Loading cryptocurrency data...</td></tr>';
 
-      try {
-        const pools = [
-          { 
-            name: 'TRRXITTE XTE', 
-            coingeckoId: 'traaitt',
-            logoId: 'xte',
-            poolUrl: 'https://xte.trrxitte.com/api/stats',
-            displayUrl: 'xte.trrxitte.com',
-            linkUrl: 'https://xte.trrxitte.com',
-            tracking: 'Active',
-            isMiningCore: false,
-            defaultFee: '1'
-          },
-          { 
-            name: 'TRRXITTE XTCASH', 
-            coingeckoId: 'traaittxtcash',
-            logoId: 'xtcash',
-            poolUrl: 'https://xtcash.trrxitte.com/api/stats',
-            displayUrl: 'xtcash.trrxitte.com',
-            linkUrl: 'https://xtcash.trrxitte.com',
-            tracking: 'Active',
-            isMiningCore: false,
-            defaultFee: '1'
-          },
-          { 
-            name: 'Bitcoin', 
-            coingeckoId: 'bitcoin',
-            logoId: 'bitcoin',
-            poolId: 'bitcoin',
-            poolUrl: 'https://bitcoin.multipool.dev/api/pools/bitcoin',
-            displayUrl: 'Bitcoin at multipool',
-            linkUrl: 'https://bitcoin.multipool.dev/#bitcoin/connect',
-            tracking: 'Active',
-            isMiningCore: true
-          },
-          { 
-            name: 'Bitcoin Cash', 
-            coingeckoId: 'bitcoin-cash',
-            logoId: 'bitcoincash',
-            poolId: 'bitcoincash',
-            poolUrl: 'https://bitcoin.multipool.dev/api/pools/bitcoincash',
-            displayUrl: 'Bitcoin Cash at multipool',
-            linkUrl: 'https://bitcoin.multipool.dev/#bitcoincash/connect',
-            tracking: 'Active',
-            isMiningCore: true
-          },
-          { 
-            name: 'Monero', 
-            coingeckoId: 'monero',
-            logoId: 'monero',
-            poolId: 'monero',
-            poolUrl: 'https://bitcoin.multipool.dev/api/pools/monero',
-            displayUrl: 'Monero at multipool',
-            linkUrl: 'https://bitcoin.multipool.dev/#monero/connect',
-            tracking: 'Active',
-            isMiningCore: true
-          },
-          { 
-            name: 'Zcash', 
-            coingeckoId: 'zcash',
-            logoId: 'zcash',
-            poolId: 'zcash',
-            poolUrl: 'https://bitcoin.multipool.dev/api/pools/zcash',
-            displayUrl: 'ZCASH at multipool',
-            linkUrl: 'https://bitcoin.multipool.dev/#zcash/connect',
-            tracking: 'Active',
-            isMiningCore: true
-          },
-          { 
-            name: 'Dash', 
-            coingeckoId: 'dash',
-            logoId: 'dash',
-            poolId: 'dash',
-            poolUrl: 'https://bitcoin.multipool.dev/api/pools/dash',
-            displayUrl: 'Dash at multipool',
-            linkUrl: 'https://bitcoin.multipool.dev/#dash/connect',
-            tracking: 'Active',
-            isMiningCore: true
-          },
-          { 
-            name: 'eCash', 
-            coingeckoId: 'ecash',
-            logoId: 'ecash',
-            poolId: 'ecash',
-            poolUrl: 'https://bitcoin.multipool.dev/api/pools/ecash',
-            displayUrl: 'eCash at multipool',
-            linkUrl: 'https://bitcoin.multipool.dev/#ecash/connect',
-            tracking: 'Active',
-            isMiningCore: true
-          },
-          { 
-            name: 'Bitcoin SV', 
-            coingeckoId: 'bitcoin-cash-sv',
-            logoId: 'bitcoinsv',
-            poolId: 'bitcoinsv',
-            poolUrl: 'https://bitcoin.multipool.dev/api/pools/bitcoinsv',
-            displayUrl: 'Bitcoin SV at multipool',
-            linkUrl: 'https://bitcoin.multipool.dev/#bitcoinsv/connect',
-            tracking: 'Active',
-            isMiningCore: true
-          },
-          { 
-            name: 'Dogecoin + Litecoin', 
-            coingeckoId: 'dogecoin',
-            logoId: 'dogecoin',
-            mergedWith: 'litecoin',
-            poolUrl: 'https://doge.multipool.dev/api/pool',
-            displayUrl: 'DOGE + LTC at multipool',
-            linkUrl: 'https://doge.multipool.dev',
-            tracking: 'Active',
-            isMiningCore: false,
-            isDogepool: true,
-            defaultFee: '1'
-          }
-        ];
+      const pools = [
+        { name: 'TRRXITTE XTE', coingeckoId: 'traaitt', logoId: 'xte', poolUrl: 'https://xte.trrxitte.com/api/stats', displayUrl: 'xte.trrxitte.com', linkUrl: 'https://xte.trrxitte.com', tracking: 'Active', isMiningCore: false, defaultFee: '1' },
+        { name: 'TRRXITTE XTCASH', coingeckoId: 'traaittxtcash', logoId: 'xtcash', poolUrl: 'https://xtcash.trrxitte.com/api/stats', displayUrl: 'xtcash.trrxitte.com', linkUrl: 'https://xtcash.trrxitte.com', tracking: 'Active', isMiningCore: false, defaultFee: '1' },
+        { name: 'Bitcoin', coingeckoId: 'bitcoin', logoId: 'bitcoin', poolId: 'bitcoin', poolUrl: 'https://bitcoin.multipool.dev/api/pools/bitcoin', displayUrl: 'Bitcoin at multipool', linkUrl: 'https://bitcoin.multipool.dev/#bitcoin/connect', tracking: 'Active', isMiningCore: true },
+        { name: 'Bitcoin Cash', coingeckoId: 'bitcoin-cash', logoId: 'bitcoincash', poolId: 'bitcoincash', poolUrl: 'https://bitcoin.multipool.dev/api/pools/bitcoincash', displayUrl: 'Bitcoin Cash at multipool', linkUrl: 'https://bitcoin.multipool.dev/#bitcoincash/connect', tracking: 'Active', isMiningCore: true },
+        { name: 'Monero', coingeckoId: 'monero', logoId: 'monero', poolId: 'monero', poolUrl: 'https://bitcoin.multipool.dev/api/pools/monero', displayUrl: 'Monero at multipool', linkUrl: 'https://bitcoin.multipool.dev/#monero/connect', tracking: 'Active', isMiningCore: true },
+        { name: 'Zcash', coingeckoId: 'zcash', logoId: 'zcash', poolId: 'zcash', poolUrl: 'https://bitcoin.multipool.dev/api/pools/zcash', displayUrl: 'ZCASH at multipool', linkUrl: 'https://bitcoin.multipool.dev/#zcash/connect', tracking: 'Active', isMiningCore: true },
+        { name: 'Dash', coingeckoId: 'dash', logoId: 'dash', poolId: 'dash', poolUrl: 'https://bitcoin.multipool.dev/api/pools/dash', displayUrl: 'Dash at multipool', linkUrl: 'https://bitcoin.multipool.dev/#dash/connect', tracking: 'Active', isMiningCore: true },
+        { name: 'eCash', coingeckoId: 'ecash', logoId: 'ecash', poolId: 'ecash', poolUrl: 'https://bitcoin.multipool.dev/api/pools/ecash', displayUrl: 'eCash at multipool', linkUrl: 'https://bitcoin.multipool.dev/#ecash/connect', tracking: 'Active', isMiningCore: true },
+        { name: 'Bitcoin SV', coingeckoId: 'bitcoin-cash-sv', logoId: 'bitcoinsv', poolId: 'bitcoinsv', poolUrl: 'https://bitcoin.multipool.dev/api/pools/bitcoinsv', displayUrl: 'Bitcoin SV at multipool', linkUrl: 'https://bitcoin.multipool.dev/#bitcoinsv/connect', tracking: 'Active', isMiningCore: true },
+        { name: 'Dogecoin + Litecoin', coingeckoId: 'dogecoin', logoId: 'dogecoin', mergedWith: 'litecoin', poolUrl: 'https://doge.multipool.dev/api/pool', displayUrl: 'DOGE + LTC at multipool', linkUrl: 'https://doge.multipool.dev', tracking: 'Active', isMiningCore: false, isDogepool: true, defaultFee: '1' }
+      ];
 
-        // Define Multipool logo mapping
-        const multipoolLogos = {
-          'bitcoin': 'https://multipool.dev/portal/images/bitcoin.png',
-          'bitcoincash': 'https://multipool.dev/portal/images/bitcoincash.png',
-          'bitcoinsv': 'https://multipool.dev/portal/images/bitcoinsv.png',
-          'dash': 'https://multipool.dev/portal/images/dash.png',
-          'dogecoin': 'https://multipool.dev/portal/images/dogecoin.png',
-          'ecash': 'https://multipool.dev/portal/images/ecash.png',
-          'monero': 'https://multipool.dev/portal/images/monero.png',
-          'xtcash': 'https://multipool.dev/portal/images/xtcash.png',
-          'xte': 'https://multipool.dev/portal/images/xte.png',
-          'zcash': 'https://multipool.dev/portal/images/zcash.png'
-        };
+      const multipoolLogos = {
+        'bitcoin': 'https://multipool.dev/portal/images/bitcoin.png',
+        'bitcoincash': 'https://multipool.dev/portal/images/bitcoincash.png',
+        'bitcoinsv': 'https://multipool.dev/portal/images/bitcoinsv.png',
+        'dash': 'https://multipool.dev/portal/images/dash.png',
+        'dogecoin': 'https://multipool.dev/portal/images/dogecoin.png',
+        'ecash': 'https://multipool.dev/portal/images/ecash.png',
+        'monero': 'https://multipool.dev/portal/images/monero.png',
+        'xtcash': 'https://multipool.dev/portal/images/xtcash.png',
+        'xte': 'https://multipool.dev/portal/images/xte.png',
+        'zcash': 'https://multipool.dev/portal/images/zcash.png'
+      };
 
-        // Fetch initial prices
-        const coingeckoIds = [...new Set([...pools.map(pool => pool.coingeckoId), ...pools.filter(p => p.mergedWith).map(p => p.mergedWith)])].join(',');
-        let priceData = await fetchPricesWithRetry(coingeckoIds);
-        if (!priceData) {
-          priceData = {};
-          pools.forEach(pool => {
-            priceData[pool.coingeckoId] = { price: 'N/A', icon: multipoolLogos[pool.logoId] || '' };
-            if (pool.mergedWith) priceData[pool.mergedWith] = { price: 'N/A', icon: multipoolLogos[pool.mergedWith] || '' };
-          });
+      // Load cached prices if available
+      let priceData = getCachedPrices()?.data || {};
+      const coingeckoIds = [...new Set([...pools.map(pool => pool.coingeckoId), ...pools.filter(p => p.mergedWith).map(p => p.mergedWith)])].join(',');
+
+      // Set default prices for critical coins if not cached
+      priceData['traaitt'] = priceData['traaitt'] || { price: 0.00000001, icon: multipoolLogos['xte'] };
+      priceData['traaittxtcash'] = priceData['traaittxtcash'] || { price: 0.00000001, icon: multipoolLogos['xtcash'] };
+
+      // Build table immediately with default/cached data
+      tableBody.innerHTML = '';
+      pools.forEach(pool => {
+        const logoUrl = multipoolLogos[pool.logoId] || priceData[pool.coingeckoId]?.icon || '';
+        let priceDisplay = formatPrice(priceData[pool.coingeckoId]?.price);
+        if (pool.mergedWith) {
+          priceDisplay += ` / ${formatPrice(priceData[pool.mergedWith]?.price || 'N/A')}`;
         }
 
-        // Fetch pool stats
-        const poolStats = {};
-        for (const pool of pools) {
+        const row = document.createElement('tr');
+        row.setAttribute('data-coingecko-id', pool.coingeckoId);
+        if (pool.mergedWith) row.setAttribute('data-merged-with', pool.mergedWith);
+        row.innerHTML = `
+          <td><img src="${logoUrl}" class="crypto-icon" alt="${pool.name} icon" onerror="this.src='https://multipool.dev/portal/images/default.png'">${pool.name}</td>
+          <td class="price">${priceDisplay}</td>
+          <td><a href="${pool.linkUrl}">${pool.displayUrl}</a></td>
+          <td>Loading...</td>
+          <td>Loading...</td>
+          <td>${pool.defaultFee || '1'}%</td>
+          <td>Loading...</td>
+          <td>Loading...</td>
+          <td>Loading...</td>
+          <td>${pool.tracking}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+
+      // Fetch pool stats and update table
+      const poolStats = {};
+      for (const pool of pools) {
+        try {
+          const response = await fetch(pool.poolUrl);
+          if (!response.ok) throw new Error(`API failed for ${pool.name}: ${response.status}`);
+          const data = await response.json();
+
           if (pool.isMiningCore) {
-            try {
-              const response = await fetch(pool.poolUrl);
-              if (!response.ok) throw new Error(`API failed for ${pool.name}: ${response.status}`);
-              const data = await response.json();
-
-              poolStats[pool.coingeckoId] = {
-                pool: {
-                  hashrate: data.pool.poolStats?.poolHashrate || 0,
-                  miners: data.pool.poolStats?.connectedMiners || 'N/A',
-                  fee: data.pool.poolFeePercent || '1',
-                  lastBlock: data.pool.networkStats?.lastNetworkBlockTime ? new Date(data.pool.networkStats.lastNetworkBlockTime).toLocaleString() : 'N/A'
-                },
-                network: {
-                  height: data.pool.networkStats?.blockHeight || 'N/A',
-                  difficulty: data.pool.networkStats?.networkDifficulty || 'N/A'
-                }
-              };
-            } catch (poolError) {
-              console.error(`MiningCore fetch failed for ${pool.name}:`, poolError);
-              poolStats[pool.coingeckoId] = {
-                pool: { hashrate: 0, miners: 'N/A', fee: '1', lastBlock: 'N/A' },
-                network: { height: 'N/A', difficulty: 'N/A' }
-              };
-            }
-          } else if (pool.isDogepool) {
-            try {
-              const poolResponse = await fetch(pool.poolUrl);
-              if (!poolResponse.ok) throw new Error(`Dogepool API failed for ${pool.name}: ${poolResponse.status}`);
-              const statsData = await poolResponse.json();
-
-              poolStats[pool.coingeckoId] = {
-                pool: {
-                  hashrate: statsData.hashrate || 0,
-                  miners: statsData.miners || 'N/A',
-                  fee: statsData.fee || pool.defaultFee,
-                  lastBlock: statsData.lastBlock ? new Date(statsData.lastBlock).toLocaleString() : 'N/A'
-                },
-                network: {
-                  height: statsData.height || 'N/A',
-                  difficulty: statsData.difficulty || 'N/A'
-                }
-              };
-            } catch (dogepoolError) {
-              console.error(`Dogepool fetch failed for ${pool.name}:`, dogepoolError);
-              poolStats[pool.coingeckoId] = {
-                pool: { hashrate: 0, miners: 'N/A', fee: pool.defaultFee, lastBlock: 'N/A' },
-                network: { height: 'N/A', difficulty: 'N/A' }
-              };
-            }
-          } else {
-            try {
-              const poolResponse = await fetch(pool.poolUrl);
-              if (!poolResponse.ok) throw new Error(`TRRXITTE API failed for ${pool.name}: ${poolResponse.status}`);
-              const statsData = await poolResponse.json();
-              poolStats[pool.coingeckoId] = {
-                pool: {
-                  hashrate: statsData.pool?.hashrate || 0,
-                  soloHashrate: statsData.pool?.hashrateSolo || 0,
-                  miners: statsData.pool?.miners !== undefined ? statsData.pool.miners : 'N/A',
-                  minersSolo: statsData.pool?.minersSolo !== undefined ? statsData.pool.minersSolo : 'N/A',
-                  fee: pool.defaultFee,
-                  lastBlock: statsData.pool?.lastBlockFoundSolo 
-                    ? new Date(parseInt(statsData.pool.lastBlockFoundSolo)).toLocaleString() 
-                    : statsData.pool?.lastBlockFoundprop 
-                      ? new Date(parseInt(statsData.pool.lastBlockFoundprop)).toLocaleString() 
-                      : 'N/A'
-                },
-                network: {
-                  height: statsData.network?.height || 'N/A',
-                  difficulty: statsData.network?.difficulty || 'N/A'
-                }
-              };
-            } catch (trrxitteError) {
-              console.error(`TRRXITTE fetch failed for ${pool.name}:`, trrxitteError);
-              poolStats[pool.coingeckoId] = {
-                pool: { hashrate: 0, soloHashrate: 0, miners: 'N/A', minersSolo: 'N/A', fee: pool.defaultFee, lastBlock: 'N/A' },
-                network: { height: 'N/A', difficulty: 'N/A' }
-              };
-            }
-          }
-        }
-
-        // Build table with all columns
-        tableBody.innerHTML = '';
-        for (const pool of pools) {
-          try {
-            const stats = poolStats[pool.coingeckoId];
-            const poolStatsData = stats.pool || {};
-            const networkStats = stats.network || {};
-
-            const hashrate = poolStatsData.hashrate || 0;
-            const soloHashrate = poolStatsData.soloHashrate || 0;
-            const miners = poolStatsData.miners === 'N/A' ? 'N/A' : (poolStatsData.miners || 0);
-            const minersSolo = poolStatsData.minersSolo === 'N/A' ? 'N/A' : (poolStatsData.minersSolo || 0);
-            let fee = poolStatsData.fee;
-            if (fee === 'N/A' && !pool.isMiningCore) {
-              fee = pool.defaultFee;
-            }
-            const height = networkStats.height || 'N/A';
-            const lastBlock = poolStatsData.lastBlock || 'N/A';
-            const difficulty = networkStats.difficulty || 'N/A';
-
-            const totalHashrate = hashrate + soloHashrate;
-            let formattedHashrate = '';
-            if (totalHashrate > 1000000000000) {
-              formattedHashrate = (totalHashrate / 1000000000000).toFixed(2) + ' TH/s';
-            } else if (totalHashrate > 1000000000) {
-              formattedHashrate = (totalHashrate / 1000000000).toFixed(2) + ' GH/s';
-            } else if (totalHashrate > 1000000) {
-              formattedHashrate = (totalHashrate / 1000000).toFixed(2) + ' MH/s';
-            } else if (totalHashrate > 1000) {
-              formattedHashrate = (totalHashrate / 1000).toFixed(2) + ' KH/s';
-            } else {
-              formattedHashrate = totalHashrate.toFixed(2) + ' H/s';
-            }
-
-            const totalMiners = (miners === 'N/A' || minersSolo === 'N/A') ? 'none' : (parseInt(miners) + parseInt(minersSolo));
-            const minersDisplay = (pool.coingeckoId === 'traaitt' || pool.coingeckoId === 'traaittxtcash') 
-              ? `${totalMiners === 'none' ? 'none' : totalMiners + ' total'}` 
-              : totalMiners;
-
-            let formattedDifficulty = '';
-            if (typeof difficulty === 'number') {
-              if (difficulty > 1000000000) {
-                formattedDifficulty = (difficulty / 1000000000).toFixed(2) + ' G';
-              } else if (difficulty > 1000000) {
-                formattedDifficulty = (difficulty / 1000000).toFixed(2) + ' M';
-              } else if (difficulty > 1000) {
-                formattedDifficulty = (difficulty / 1000).toFixed(2) + ' K';
-              } else {
-                formattedDifficulty = difficulty.toFixed(2);
+            poolStats[pool.coingeckoId] = {
+              pool: {
+                hashrate: data.pool.poolStats?.poolHashrate || 0,
+                miners: data.pool.poolStats?.connectedMiners || 'N/A',
+                fee: data.pool.poolFeePercent || pool.defaultFee || '1',
+                lastBlock: data.pool.networkStats?.lastNetworkBlockTime ? new Date(data.pool.networkStats.lastNetworkBlockTime).toLocaleString() : 'N/A'
+              },
+              network: {
+                height: data.pool.networkStats?.blockHeight || 'N/A',
+                difficulty: data.pool.networkStats?.networkDifficulty || 'N/A'
               }
-            } else {
-              formattedDifficulty = difficulty;
-            }
-
-            const formatPrice = (price) => {
-              if (price === 'N/A' || price === undefined) return '$N/A';
-              if (price >= 1) return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-              if (price >= 0.0001) return `$${price.toFixed(4)}`;
-              if (price > 0) return `$${price.toFixed(8)}`;
-              return '$0.00000000';
             };
-
-            let priceDisplay = formatPrice(priceData[pool.coingeckoId]?.price);
-            if (pool.mergedWith) {
-              priceDisplay += ` / ${formatPrice(priceData[pool.mergedWith]?.price)}`;
-            }
-
-            const logoUrl = multipoolLogos[pool.logoId] || priceData[pool.coingeckoId]?.icon || '';
-
-            const row = document.createElement('tr');
-            row.setAttribute('data-coingecko-id', pool.coingeckoId);
-            if (pool.mergedWith) {
-              row.setAttribute('data-merged-with', pool.mergedWith);
-            }
-            row.innerHTML = `
-              <td>
-                <img src="${logoUrl}" 
-                     class="crypto-icon" 
-                     alt="${pool.name} icon" 
-                     onerror="this.src='https://multipool.dev/portal/images/default.png'">
-                ${pool.name}
-              </td>
-              <td class="price">${priceDisplay}</td>
-              <td><a href="${pool.linkUrl}">${pool.displayUrl}</a></td>
-              <td>${formattedHashrate}</td>
-              <td>${minersDisplay}</td>
-              <td>${fee}%</td>
-              <td>${height}</td>
-              <td>${lastBlock}</td>
-              <td>${formattedDifficulty}</td>
-              <td>${pool.tracking}</td>
-            `;
-            tableBody.appendChild(row);
-          } catch (poolError) {
-            console.error(`Error processing data for ${pool.name}:`, poolError);
-            const row = document.createElement('tr');
-            let priceDisplay = formatPrice(priceData[pool.coingeckoId]?.price);
-            if (pool.mergedWith) {
-              priceDisplay += ` / ${formatPrice(priceData[pool.mergedWith]?.price)}`;
-            }
-            const logoUrl = multipoolLogos[pool.logoId] || priceData[pool.coingeckoId]?.icon || '';
-            row.setAttribute('data-coingecko-id', pool.coingeckoId);
-            if (pool.mergedWith) {
-              row.setAttribute('data-merged-with', pool.mergedWith);
-            }
-            row.innerHTML = `
-              <td>
-                <img src="${logoUrl}" 
-                     class="crypto-icon" 
-                     alt="${pool.name} icon" 
-                     onerror="this.src='https://multipool.dev/portal/images/default.png'">
-                ${pool.name}
-              </td>
-              <td class="price">${priceDisplay}</td>
-              <td><a href="${pool.linkUrl}">${pool.displayUrl}</a></td>
-              <td class="error">N/A</td>
-              <td>none</td>
-              <td>${pool.isMiningCore ? '1' : pool.defaultFee}%</td>
-              <td class="error">N/A</td>
-              <td class="error">N/A</td>
-              <td class="error">N/A</td>
-              <td>${pool.tracking}</td>
-            `;
-            tableBody.appendChild(row);
+          } else if (pool.isDogepool) {
+            poolStats[pool.coingeckoId] = {
+              pool: {
+                hashrate: data.hashrate || 0,
+                miners: data.miners || 'N/A',
+                fee: data.fee || pool.defaultFee || '1',
+                lastBlock: data.lastBlock ? new Date(data.lastBlock).toLocaleString() : 'N/A'
+              },
+              network: {
+                height: data.height || 'N/A',
+                difficulty: data.difficulty || 'N/A'
+              }
+            };
+          } else {
+            poolStats[pool.coingeckoId] = {
+              pool: {
+                hashrate: data.pool?.hashrate || 0,
+                soloHashrate: data.pool?.hashrateSolo || 0,
+                miners: data.pool?.miners !== undefined ? data.pool.miners : 'N/A',
+                minersSolo: data.pool?.minersSolo !== undefined ? data.pool.minersSolo : 'N/A',
+                fee: pool.defaultFee || '1',
+                lastBlock: data.pool?.lastBlockFoundSolo 
+                  ? new Date(parseInt(data.pool.lastBlockFoundSolo)).toLocaleString() 
+                  : data.pool?.lastBlockFoundprop 
+                    ? new Date(parseInt(data.pool.lastBlockFoundprop)).toLocaleString() 
+                    : 'N/A'
+              },
+              network: {
+                height: data.network?.height || 'N/A',
+                difficulty: data.network?.difficulty || 'N/A'
+              }
+            };
           }
+        } catch (error) {
+          console.error(`Pool fetch failed for ${pool.name}:`, error);
+          poolStats[pool.coingeckoId] = {
+            pool: { hashrate: 0, soloHashrate: 0, miners: 'N/A', minersSolo: 'N/A', fee: pool.defaultFee || '1', lastBlock: 'N/A' },
+            network: { height: 'N/A', difficulty: 'N/A' }
+          };
         }
-
-        // Start background price updates every 60 seconds
-        setInterval(() => updatePricesInBackground(coingeckoIds), 60000);
-      } catch (error) {
-        console.error('Error in fetchCryptoData:', error);
-        updateFetchInfo('Failed to load data. Please try refreshing.', 'error');
-        tableBody.innerHTML = '<tr><td colspan="10" class="error">Failed to load data</td></tr>';
       }
+
+      // Update table with pool stats
+      pools.forEach(pool => {
+        const stats = poolStats[pool.coingeckoId];
+        const poolStatsData = stats.pool || {};
+        const networkStats = stats.network || {};
+
+        const hashrate = poolStatsData.hashrate + (poolStatsData.soloHashrate || 0);
+        const miners = poolStatsData.miners === 'N/A' ? 'N/A' : (poolStatsData.miners || 0);
+        const minersSolo = poolStatsData.minersSolo === 'N/A' ? 'N/A' : (poolStatsData.minersSolo || 0);
+        const totalMiners = (miners === 'N/A' || minersSolo === 'N/A') ? 'none' : (parseInt(miners) + parseInt(minersSolo));
+        const minersDisplay = (pool.coingeckoId === 'traaitt' || pool.coingeckoId === 'traaittxtcash') 
+          ? `${totalMiners === 'none' ? 'none' : totalMiners + ' total'}` 
+          : totalMiners;
+
+        let formattedHashrate = '';
+        if (hashrate > 1000000000000) formattedHashrate = (hashrate / 1000000000000).toFixed(2) + ' TH/s';
+        else if (hashrate > 1000000000) formattedHashrate = (hashrate / 1000000000).toFixed(2) + ' GH/s';
+        else if (hashrate > 1000000) formattedHashrate = (hashrate / 1000000).toFixed(2) + ' MH/s';
+        else if (hashrate > 1000) formattedHashrate = (hashrate / 1000).toFixed(2) + ' KH/s';
+        else formattedHashrate = hashrate.toFixed(2) + ' H/s';
+
+        let formattedDifficulty = '';
+        const difficulty = networkStats.difficulty;
+        if (typeof difficulty === 'number') {
+          if (difficulty > 1000000000) formattedDifficulty = (difficulty / 1000000000).toFixed(2) + ' G';
+          else if (difficulty > 1000000) formattedDifficulty = (difficulty / 1000000).toFixed(2) + ' M';
+          else if (difficulty > 1000) formattedDifficulty = (difficulty / 1000).toFixed(2) + ' K';
+          else formattedDifficulty = difficulty.toFixed(2);
+        } else formattedDifficulty = difficulty;
+
+        const row = tableBody.querySelector(`tr[data-coingecko-id="${pool.coingeckoId}"]`);
+        if (row) {
+          row.cells[3].textContent = formattedHashrate;
+          row.cells[4].textContent = minersDisplay;
+          row.cells[5].textContent = `${poolStatsData.fee}%`;
+          row.cells[6].textContent = networkStats.height;
+          row.cells[7].textContent = poolStatsData.lastBlock;
+          row.cells[8].textContent = formattedDifficulty;
+        }
+      });
+
+      // Start background price updates every 30 seconds
+      setInterval(() => updatePricesInBackground(coingeckoIds), 30000);
+
+      // Initial price fetch in background
+      updatePricesInBackground(coingeckoIds);
     }
 
-    // Initial fetch (only once)
-    fetchCryptoData();
+    // Run initialization
+    initializeTable();
   </script>
 </body>
 </html>
